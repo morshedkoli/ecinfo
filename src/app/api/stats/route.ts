@@ -1,15 +1,58 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
-        // Get total voters (excluding deleted)
-        const totalVoters = await prisma.voter.count({
-            where: { status: { not: 'Deleted' } },
-        });
+        // Parse filter parameters
+        const { searchParams } = new URL(request.url);
+        const occupation = searchParams.get('occupation') || '';
+        const areaCode = searchParams.get('area_code') || '';
+        const status = searchParams.get('status') || '';
+        const minAge = searchParams.get('minAge') || '';
+        const maxAge = searchParams.get('maxAge') || '';
 
+        // Build where clause for filtering
+        const where: any = {};
+
+        if (occupation) {
+            where.occupation = { contains: occupation, mode: 'insensitive' };
+        }
+
+        if (areaCode) {
+            where.voter_area_code = areaCode;
+        }
+
+        if (status) {
+            where.status = status;
+        } else {
+            // By default, exclude deleted voters
+            where.status = { not: 'Deleted' };
+        }
+
+        // Age range filtering
+        if (minAge || maxAge) {
+            const now = new Date();
+            const dobConditions: any = {};
+
+            if (maxAge) {
+                const minDob = new Date(now.getFullYear() - parseInt(maxAge), now.getMonth(), now.getDate());
+                dobConditions.gte = minDob;
+            }
+
+            if (minAge) {
+                const maxDob = new Date(now.getFullYear() - parseInt(minAge), now.getMonth(), now.getDate());
+                dobConditions.lte = maxDob;
+            }
+
+            where.dob = dobConditions;
+        }
+
+        // Get total voters with filters
+        const totalVoters = await prisma.voter.count({ where });
+
+        // Get deleted voters (only if no status filter is applied)
         const deletedVoters = await prisma.voter.count({
-            where: { status: 'Deleted' },
+            where: { ...where, status: 'Deleted' },
         });
 
         // Get total voter areas
@@ -18,7 +61,7 @@ export async function GET() {
         // Get occupation distribution using groupBy
         const occupationStats = await prisma.voter.groupBy({
             by: ['occupation'],
-            where: { status: { not: 'Deleted' } },
+            where,
             _count: { occupation: true },
             orderBy: { _count: { occupation: 'desc' } },
             take: 10,
@@ -27,19 +70,19 @@ export async function GET() {
         // Get voters by area using groupBy
         const areaStats = await prisma.voter.groupBy({
             by: ['voter_area_code'],
-            where: { status: { not: 'Deleted' } },
+            where,
             _count: { voter_area_code: true },
             orderBy: { _count: { voter_area_code: 'desc' } },
             take: 10,
         });
 
-        // Get age distribution - using raw query for MongoDB aggregation
+        // Get age distribution
         const currentYear = new Date().getFullYear();
 
         // Get voters with DOB to calculate age distribution
         const votersWithDob = await prisma.voter.findMany({
             where: {
-                status: { not: 'Deleted' },
+                ...where,
                 dob: { not: null },
             },
             select: { dob: true },
@@ -76,7 +119,7 @@ export async function GET() {
 
         // Get recent voters added
         const recentVoters = await prisma.voter.findMany({
-            where: { status: { not: 'Deleted' } },
+            where,
             orderBy: { createdAt: 'desc' },
             take: 5,
             select: {

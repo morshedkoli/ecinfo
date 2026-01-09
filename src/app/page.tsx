@@ -10,6 +10,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import StatsCard from '@/components/StatsCard';
+import SearchFilter from '@/components/SearchFilter';
 import {
   BarChart,
   Bar,
@@ -33,19 +34,44 @@ interface Stats {
   recentVoters: { name: string; voter_id: string; occupation: string }[];
 }
 
+interface VoterArea {
+  voter_area_code: string;
+  voter_area_name: string;
+  district: string;
+}
+
 const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
 
 export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [filters, setFilters] = useState<Record<string, string>>({});
+
+  // Dynamic filter options
+  const [occupationOptions, setOccupationOptions] = useState<{ value: string; label: string }[]>([]);
+  const [voterAreas, setVoterAreas] = useState<VoterArea[]>([]);
 
   useEffect(() => {
     fetchStats();
+  }, [filters]);
+
+  // Fetch occupations and voter areas on mount
+  useEffect(() => {
+    fetchInitialOccupations();
+    fetchVoterAreas();
   }, []);
 
   const fetchStats = async () => {
     try {
-      const res = await fetch('/api/stats');
+      const params = new URLSearchParams();
+
+      if (filters.occupation) params.append('occupation', filters.occupation);
+      if (filters.status) params.append('status', filters.status);
+      if (filters.area_code) params.append('area_code', filters.area_code);
+      if (filters.minAge) params.append('minAge', filters.minAge);
+      if (filters.maxAge) params.append('maxAge', filters.maxAge);
+
+      const res = await fetch(`/api/stats?${params}`);
       const data = await res.json();
       if (data.success) {
         setStats(data.data);
@@ -55,6 +81,40 @@ export default function Dashboard() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchInitialOccupations = async () => {
+    try {
+      const res = await fetch('/api/stats');
+      const data = await res.json();
+      if (data.success && data.data.occupationStats) {
+        const uniqueOccupations = data.data.occupationStats
+          .map((item: { occupation: string }) => ({
+            value: item.occupation,
+            label: item.occupation,
+          }))
+          .sort((a: { label: string }, b: { label: string }) => a.label.localeCompare(b.label));
+        setOccupationOptions(uniqueOccupations);
+      }
+    } catch (error) {
+      console.error('Failed to fetch occupations:', error);
+    }
+  };
+
+  const fetchVoterAreas = async () => {
+    try {
+      const res = await fetch('/api/voter-areas');
+      const data = await res.json();
+      if (data.success) {
+        setVoterAreas(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch voter areas:', error);
+    }
+  };
+
+  const handleFilter = (newFilters: Record<string, string>) => {
+    setFilters(newFilters);
   };
 
   if (isLoading) {
@@ -82,6 +142,53 @@ export default function Dashboard() {
         <p className="mt-2 text-slate-400">
           Overview of voter registration data
         </p>
+      </div>
+
+      {/* Search & Filter */}
+      <div className="mb-6">
+        <SearchFilter
+          onSearch={() => { }}
+          onFilter={handleFilter}
+          placeholder="Filter dashboard statistics..."
+          filters={[
+            {
+              key: 'occupation',
+              label: 'Occupation',
+              options: occupationOptions,
+              type: 'select'
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              options: [
+                { value: 'Active', label: 'Active' },
+                { value: 'Deleted', label: 'Deleted' },
+              ],
+              type: 'select'
+            },
+            {
+              key: 'area_code',
+              label: 'Voter Area',
+              options: voterAreas.map(area => ({
+                value: area.voter_area_code,
+                label: `${area.voter_area_name} (${area.voter_area_code})`,
+              })),
+              type: 'select'
+            },
+            {
+              key: 'minAge',
+              label: 'Min Age',
+              type: 'number',
+              placeholder: 'e.g., 18'
+            },
+            {
+              key: 'maxAge',
+              label: 'Max Age',
+              type: 'number',
+              placeholder: 'e.g., 65'
+            },
+          ]}
+        />
       </div>
 
       {/* Stats Cards */}
