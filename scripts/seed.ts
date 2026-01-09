@@ -1,6 +1,6 @@
-import dbConnect from '../src/lib/mongodb';
-import VoterArea from '../src/models/VoterArea';
-import Voter from '../src/models/Voter';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 const sampleData = {
     administrative_metadata: {
@@ -78,16 +78,17 @@ function parseDate(dateStr: string): Date {
 
 async function seed() {
     try {
-        await dbConnect();
-        console.log('Connected to MongoDB');
+        console.log('Starting database seed...');
 
         // Clear existing data
-        await VoterArea.deleteMany({});
-        await Voter.deleteMany({});
+        await prisma.voter.deleteMany({});
+        await prisma.voterArea.deleteMany({});
         console.log('Cleared existing data');
 
         // Create voter area
-        const area = await VoterArea.create(sampleData.administrative_metadata);
+        const area = await prisma.voterArea.create({
+            data: sampleData.administrative_metadata
+        });
         console.log('Created voter area:', area.voter_area_name);
 
         // Create voters
@@ -98,15 +99,20 @@ async function seed() {
             status: v.status || 'Active'
         }));
 
-        await Voter.insertMany(votersToCreate);
+        await prisma.voter.createMany({
+            data: votersToCreate
+        });
         console.log(`Created ${votersToCreate.length} voters`);
 
         console.log('\nSeed completed successfully!');
-        process.exit(0);
     } catch (error) {
         console.error('Seed error:', error);
-        process.exit(1);
+        throw error;
+    } finally {
+        await prisma.$disconnect();
     }
 }
 
-seed();
+seed()
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));

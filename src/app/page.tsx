@@ -185,9 +185,11 @@ export default function Dashboard() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ ageGroup, percent }) =>
-                    `${ageGroup}: ${(percent * 100).toFixed(0)}%`
-                  }
+                  label={(props) => {
+                    const ageGroup = (props.payload as { ageGroup: string })?.ageGroup;
+                    const percent = props.percent ?? 0;
+                    return `${ageGroup}: ${(percent * 100).toFixed(0)}%`;
+                  }}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="count"
