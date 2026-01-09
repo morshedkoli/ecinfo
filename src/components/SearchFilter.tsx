@@ -10,7 +10,9 @@ interface SearchFilterProps {
     filters?: {
         key: string;
         label: string;
-        options: { value: string; label: string }[];
+        options?: { value: string; label: string }[];
+        type?: 'select' | 'number';
+        placeholder?: string;
     }[];
 }
 
@@ -78,8 +80,8 @@ export default function SearchFilter({
                     <button
                         onClick={() => setShowFilters(!showFilters)}
                         className={`flex items-center gap-2 rounded-xl border px-4 py-3 transition-all ${showFilters
-                                ? 'border-violet-500 bg-violet-500/10 text-violet-400'
-                                : 'border-slate-700/50 bg-slate-800/50 text-slate-300 hover:border-slate-600'
+                            ? 'border-violet-500 bg-violet-500/10 text-violet-400'
+                            : 'border-slate-700/50 bg-slate-800/50 text-slate-300 hover:border-slate-600'
                             }`}
                     >
                         <Filter size={18} />
@@ -104,7 +106,7 @@ export default function SearchFilter({
                 )}
             </div>
 
-            {/* Filter Dropdowns */}
+            {/* Filter Dropdowns and Inputs */}
             {showFilters && filters.length > 0 && (
                 <div className="flex flex-wrap gap-3 p-4 rounded-xl bg-slate-800/30 border border-slate-700/50">
                     {filters.map((filter) => (
@@ -112,18 +114,29 @@ export default function SearchFilter({
                             <label className="block text-xs font-medium text-slate-400 mb-1">
                                 {filter.label}
                             </label>
-                            <select
-                                value={activeFilters[filter.key] || ''}
-                                onChange={(e) => handleFilterChange(filter.key, e.target.value)}
-                                className="w-full rounded-lg border border-slate-700/50 bg-slate-800 py-2 px-3 text-sm text-white focus:border-violet-500 focus:outline-none"
-                            >
-                                <option value="">All</option>
-                                {filter.options.map((option) => (
-                                    <option key={option.value} value={option.value}>
-                                        {option.label}
-                                    </option>
-                                ))}
-                            </select>
+                            {(!filter.type || filter.type === 'select') ? (
+                                <select
+                                    value={activeFilters[filter.key] || ''}
+                                    onChange={(e) => handleFilterChange(filter.key, e.target.value)}
+                                    className="w-full rounded-lg border border-slate-700/50 bg-slate-800 py-2 px-3 text-sm text-white focus:border-violet-500 focus:outline-none"
+                                >
+                                    <option value="">All</option>
+                                    {filter.options?.map((option) => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <input
+                                    type="number"
+                                    value={activeFilters[filter.key] || ''}
+                                    onChange={(e) => handleFilterChange(filter.key, e.target.value)}
+                                    placeholder={filter.placeholder || ''}
+                                    className="w-full rounded-lg border border-slate-700/50 bg-slate-800 py-2 px-3 text-sm text-white placeholder-slate-500 focus:border-violet-500 focus:outline-none"
+                                    min="0"
+                                />
+                            )}
                         </div>
                     ))}
                 </div>

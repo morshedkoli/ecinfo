@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
         const occupation = searchParams.get('occupation') || '';
         const areaCode = searchParams.get('area_code') || '';
         const status = searchParams.get('status') || '';
+        const minAge = searchParams.get('minAge') || '';
+        const maxAge = searchParams.get('maxAge') || '';
 
         const skip = (page - 1) * limit;
 
@@ -39,6 +41,26 @@ export async function GET(request: NextRequest) {
         } else {
             // By default, exclude deleted voters
             where.status = { not: 'Deleted' };
+        }
+
+        // Age range filtering
+        if (minAge || maxAge) {
+            const now = new Date();
+            const dobConditions: any = {};
+
+            if (maxAge) {
+                // Maximum age means minimum date of birth
+                const minDob = new Date(now.getFullYear() - parseInt(maxAge), now.getMonth(), now.getDate());
+                dobConditions.gte = minDob;
+            }
+
+            if (minAge) {
+                // Minimum age means maximum date of birth
+                const maxDob = new Date(now.getFullYear() - parseInt(minAge), now.getMonth(), now.getDate());
+                dobConditions.lte = maxDob;
+            }
+
+            where.dob = dobConditions;
         }
 
         const [voters, total] = await Promise.all([

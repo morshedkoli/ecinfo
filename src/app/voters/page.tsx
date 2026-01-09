@@ -27,18 +27,11 @@ interface Pagination {
     totalPages: number;
 }
 
-const occupationOptions = [
-    { value: 'Farmer', label: 'Farmer' },
-    { value: 'Business', label: 'Business' },
-    { value: 'Driver', label: 'Driver' },
-    { value: 'Laborer', label: 'Laborer' },
-    { value: 'Daily Laborer', label: 'Daily Laborer' },
-    { value: 'Teacher', label: 'Teacher' },
-    { value: 'Student', label: 'Student' },
-    { value: 'Private Service', label: 'Private Service' },
-    { value: 'Government Service', label: 'Government Service' },
-    { value: 'Unemployed', label: 'Unemployed' },
-];
+interface VoterArea {
+    voter_area_code: string;
+    voter_area_name: string;
+    district: string;
+}
 
 export default function VotersPage() {
     const [voters, setVoters] = useState<Voter[]>([]);
@@ -51,6 +44,10 @@ export default function VotersPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [filters, setFilters] = useState<Record<string, string>>({});
+
+    // Dynamic filter options
+    const [occupationOptions, setOccupationOptions] = useState<{ value: string; label: string }[]>([]);
+    const [voterAreas, setVoterAreas] = useState<VoterArea[]>([]);
 
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -68,6 +65,9 @@ export default function VotersPage() {
             if (searchQuery) params.append('search', searchQuery);
             if (filters.occupation) params.append('occupation', filters.occupation);
             if (filters.status) params.append('status', filters.status);
+            if (filters.area_code) params.append('area_code', filters.area_code);
+            if (filters.minAge) params.append('minAge', filters.minAge);
+            if (filters.maxAge) params.append('maxAge', filters.maxAge);
 
             const res = await fetch(`/api/voters?${params}`);
             const data = await res.json();
@@ -86,6 +86,42 @@ export default function VotersPage() {
     useEffect(() => {
         fetchVoters();
     }, [fetchVoters]);
+
+    // Fetch occupations and voter areas on mount
+    useEffect(() => {
+        fetchOccupations();
+        fetchVoterAreas();
+    }, []);
+
+    const fetchOccupations = async () => {
+        try {
+            const res = await fetch('/api/stats');
+            const data = await res.json();
+            if (data.success && data.data.occupationStats) {
+                const uniqueOccupations = data.data.occupationStats
+                    .map((item: { occupation: string }) => ({
+                        value: item.occupation,
+                        label: item.occupation,
+                    }))
+                    .sort((a: { label: string }, b: { label: string }) => a.label.localeCompare(b.label));
+                setOccupationOptions(uniqueOccupations);
+            }
+        } catch (error) {
+            console.error('Failed to fetch occupations:', error);
+        }
+    };
+
+    const fetchVoterAreas = async () => {
+        try {
+            const res = await fetch('/api/voter-areas');
+            const data = await res.json();
+            if (data.success) {
+                setVoterAreas(data.data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch voter areas:', error);
+        }
+    };
 
     const handleSearch = (value: string) => {
         setSearchQuery(value);
@@ -176,8 +212,8 @@ export default function VotersPage() {
             render: (voter: Voter) => (
                 <span
                     className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${voter.status === 'Active'
-                            ? 'bg-emerald-500/10 text-emerald-400'
-                            : 'bg-red-500/10 text-red-400'
+                        ? 'bg-emerald-500/10 text-emerald-400'
+                        : 'bg-red-500/10 text-red-400'
                         }`}
                 >
                     {voter.status}
@@ -250,9 +286,14 @@ export default function VotersPage() {
                 <SearchFilter
                     onSearch={handleSearch}
                     onFilter={handleFilter}
-                    placeholder="Search by name, voter ID, address..."
+                    placeholder="Search by name, voter ID, address, father, mother..."
                     filters={[
-                        { key: 'occupation', label: 'Occupation', options: occupationOptions },
+                        {
+                            key: 'occupation',
+                            label: 'Occupation',
+                            options: occupationOptions,
+                            type: 'select'
+                        },
                         {
                             key: 'status',
                             label: 'Status',
@@ -260,6 +301,28 @@ export default function VotersPage() {
                                 { value: 'Active', label: 'Active' },
                                 { value: 'Deleted', label: 'Deleted' },
                             ],
+                            type: 'select'
+                        },
+                        {
+                            key: 'area_code',
+                            label: 'Voter Area',
+                            options: voterAreas.map(area => ({
+                                value: area.voter_area_code,
+                                label: `${area.voter_area_name} (${area.voter_area_code})`,
+                            })),
+                            type: 'select'
+                        },
+                        {
+                            key: 'minAge',
+                            label: 'Min Age',
+                            type: 'number',
+                            placeholder: 'e.g., 18'
+                        },
+                        {
+                            key: 'maxAge',
+                            label: 'Max Age',
+                            type: 'number',
+                            placeholder: 'e.g., 65'
                         },
                     ]}
                 />
