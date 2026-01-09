@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = "mongodb+srv://ecuser:ecuser@cluster0.f39myhh.mongodb.net/ecadmin?retryWrites=true&w=majority"
+}
+
+model Voter {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  sl_no           String
+  name            String
+  voter_id        String    @unique
+  father          String
+  mother          String
+  occupation      String    @default("N/A")
+  dob             DateTime?
+  address         String
+  voter_area_code String
+  status          String    @default("Active")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([voter_area_code])
+  @@index([name])
+  @@index([status])
+  @@map("voters")
+}
+
+model VoterArea {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  district          String
+  upazila_thana     String
+  union_paurashava  String
+  ward_number       String
+  voter_area_name   String
+  voter_area_code   String    @unique
+  post_office       String
+  post_code         String
+  total_voters      Int       @default(0)
+  total_male_voters Int       @default(0)
+  publication_date  DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("voterareas")
+}

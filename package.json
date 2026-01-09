@@ -6,15 +6,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "postinstall": "prisma generate --schema=./prisma/schema.prisma"
+    "lint": "eslint"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.88",
     "@prisma/client": "^5.22.0",
     "dotenv": "^17.2.3",
     "lucide-react": "^0.562.0",
     "mongoose": "^9.1.2",
     "next": "16.1.1",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^5.4.530",
     "prisma": "^5.22.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
