@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Plus, Eye, Pencil, Trash2, X } from 'lucide-react';
 import DataTable from '@/components/DataTable';
@@ -34,7 +34,7 @@ interface VoterArea {
     district: string;
 }
 
-export default function VotersPage() {
+function VotersContent() {
     const searchParams = useSearchParams();
     const [voters, setVoters] = useState<Voter[]>([]);
     const [pagination, setPagination] = useState<Pagination>({
@@ -397,5 +397,13 @@ export default function VotersPage() {
                 mode={modalMode}
             />
         </div>
+    );
+}
+
+export default function VotersPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center text-slate-400">Loading voters...</div>}>
+            <VotersContent />
+        </Suspense>
     );
 }
