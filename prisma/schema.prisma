@@ -7,6 +7,18 @@ datasource db {
   url      = "mongodb+srv://ecuser:ecuser@cluster0.f39myhh.mongodb.net/ecadmin?retryWrites=true&w=majority"
 }
 
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  username  String   @unique
+  password  String
+  role      String   @default("user") // "admin" or "user"
+  status    String   @default("active") // "active" or "disabled"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
 model Voter {
   id              String    @id @default(auto()) @map("_id") @db.ObjectId
   sl_no           String

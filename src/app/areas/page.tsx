@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Eye, Pencil, Trash2, MapPin, Users, Calendar } from 'lucide-react';
 import SearchFilter from '@/components/SearchFilter';
 
@@ -27,6 +28,7 @@ interface Pagination {
 }
 
 export default function AreasPage() {
+    const router = useRouter();
     const [areas, setAreas] = useState<VoterArea[]>([]);
     const [pagination, setPagination] = useState<Pagination>({
         page: 1,
@@ -73,6 +75,10 @@ export default function AreasPage() {
     const handleSearch = (value: string) => {
         setSearchQuery(value);
         setPagination((prev) => ({ ...prev, page: 1 }));
+    };
+
+    const handleViewVoters = (area: VoterArea) => {
+        router.push(`/voters?area_code=${area.voter_area_code}&area_name=${encodeURIComponent(area.voter_area_name)}`);
     };
 
     const openModal = (mode: 'add' | 'edit' | 'view', area?: VoterArea) => {
@@ -155,20 +161,23 @@ export default function AreasPage() {
                             {/* Actions */}
                             <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
-                                    onClick={() => openModal('view', area)}
+                                    onClick={() => handleViewVoters(area)}
                                     className="rounded-lg p-2 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
+                                    title="View Voters"
                                 >
                                     <Eye size={16} />
                                 </button>
                                 <button
                                     onClick={() => openModal('edit', area)}
                                     className="rounded-lg p-2 text-slate-400 hover:bg-slate-700 hover:text-cyan-400 transition-colors"
+                                    title="Edit Area"
                                 >
                                     <Pencil size={16} />
                                 </button>
                                 <button
                                     onClick={() => handleDelete(area)}
                                     className="rounded-lg p-2 text-slate-400 hover:bg-slate-700 hover:text-red-400 transition-colors"
+                                    title="Delete Area"
                                 >
                                     <Trash2 size={16} />
                                 </button>

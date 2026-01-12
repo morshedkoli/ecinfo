@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Eye, Pencil, Trash2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Plus, Eye, Pencil, Trash2, X } from 'lucide-react';
 import DataTable from '@/components/DataTable';
 import SearchFilter from '@/components/SearchFilter';
 import VoterModal, { VoterFormData } from '@/components/VoterModal';
@@ -34,6 +35,7 @@ interface VoterArea {
 }
 
 export default function VotersPage() {
+    const searchParams = useSearchParams();
     const [voters, setVoters] = useState<Voter[]>([]);
     const [pagination, setPagination] = useState<Pagination>({
         page: 1,
@@ -44,6 +46,8 @@ export default function VotersPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [filters, setFilters] = useState<Record<string, string>>({});
+    const [areaFilterActive, setAreaFilterActive] = useState(false);
+    const [areaName, setAreaName] = useState('');
 
     // Dynamic filter options
     const [occupationOptions, setOccupationOptions] = useState<{ value: string; label: string }[]>([]);
@@ -93,6 +97,17 @@ export default function VotersPage() {
         fetchVoterAreas();
     }, []);
 
+    // Check for URL parameters on mount
+    useEffect(() => {
+        const areaCode = searchParams.get('area_code');
+        const areaNameParam = searchParams.get('area_name');
+        if (areaCode) {
+            setFilters({ area_code: areaCode });
+            setAreaFilterActive(true);
+            setAreaName(areaNameParam || areaCode);
+        }
+    }, [searchParams]);
+
     const fetchOccupations = async () => {
         try {
             const res = await fetch('/api/stats');
@@ -130,6 +145,20 @@ export default function VotersPage() {
 
     const handleFilter = (newFilters: Record<string, string>) => {
         setFilters(newFilters);
+        setPagination((prev) => ({ ...prev, page: 1 }));
+        // Clear area filter active state if area_code filter is removed
+        if (!newFilters.area_code) {
+            setAreaFilterActive(false);
+            setAreaName('');
+        }
+    };
+
+    const clearAreaFilter = () => {
+        const newFilters = { ...filters };
+        delete newFilters.area_code;
+        setFilters(newFilters);
+        setAreaFilterActive(false);
+        setAreaName('');
         setPagination((prev) => ({ ...prev, page: 1 }));
     };
 
@@ -280,6 +309,27 @@ export default function VotersPage() {
                     Add Voter
                 </button>
             </div>
+
+            {/* Area Filter Banner */}
+            {areaFilterActive && (
+                <div className="mb-4 rounded-xl bg-gradient-to-r from-violet-500/10 to-cyan-500/10 border border-violet-500/30 p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm text-slate-400">Filtering voters by area:</p>
+                            <p className="text-lg font-semibold text-white mt-1">
+                                {areaName} ({filters.area_code})
+                            </p>
+                        </div>
+                        <button
+                            onClick={clearAreaFilter}
+                            className="flex items-center gap-2 rounded-lg bg-slate-700/50 px-4 py-2 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+                        >
+                            <X size={16} />
+                            Clear Filter
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Search & Filter */}
             <div className="mb-6">
