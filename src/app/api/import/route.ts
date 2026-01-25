@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { checkAdmin } from '@/lib/auth-checks';
 
 // Convert Bengali numerals to English numerals
 function bengaliToEnglish(str: string): string {
@@ -24,6 +25,7 @@ function parseDate(dateStr: string): Date | null {
 }
 
 export async function POST(request: NextRequest) {
+    if (!await checkAdmin()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     try {
         const body = await request.json();
 

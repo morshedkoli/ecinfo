@@ -2,16 +2,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { hash } from 'bcryptjs';
-import { auth } from '@/lib/auth';
+import { checkAdmin } from '@/lib/auth-checks';
 
-// Middleware check helper
-async function checkAdmin() {
-    const session = await auth();
-    if (!session || (session.user as any)?.role !== 'admin') {
-        return false;
-    }
-    return true;
-}
 
 export async function GET() {
     if (!(await checkAdmin())) {

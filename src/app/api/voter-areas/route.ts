@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { checkAuth } from '@/lib/auth-checks';
 
 export async function GET(request: NextRequest) {
+    if (!await checkAuth()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     try {
         const { searchParams } = new URL(request.url);
         const page = parseInt(searchParams.get('page') || '1');
@@ -51,6 +53,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+    if (!await checkAuth()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     try {
         const body = await request.json();
         const area = await prisma.voterArea.create({

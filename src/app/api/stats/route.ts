@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { checkAuth } from '@/lib/auth-checks';
 
 export async function GET(request: NextRequest) {
+    if (!await checkAuth()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     try {
         // Parse filter parameters
         const { searchParams } = new URL(request.url);
