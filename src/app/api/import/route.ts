@@ -80,11 +80,21 @@ export async function POST(request: NextRequest) {
                 }
 
                 try {
-                    const existingVoter = await prisma.voter.findUnique({
+                    const existingVoter = await prisma.voter.findFirst({
                         where: { voter_id: record.voter_id },
                     });
 
-                    if (!existingVoter) {
+                    let isDuplicate = false;
+                    if (existingVoter) {
+                        const nameMatch = existingVoter.name.trim().toLowerCase() === record.name.trim().toLowerCase();
+                        const fatherMatch = existingVoter.father.trim().toLowerCase() === (record.father || 'N/A').trim().toLowerCase();
+
+                        if (nameMatch && fatherMatch) {
+                            isDuplicate = true;
+                        }
+                    }
+
+                    if (!isDuplicate) {
                         await prisma.voter.create({
                             data: {
                                 sl_no: record.sl_no,
@@ -149,6 +159,7 @@ export async function POST(request: NextRequest) {
         let votersCreated = 0;
         let votersSkipped = 0;
         const processedAreas = new Set<string>();
+        const skippedRecords: any[] = [];
 
         for (const voter of voters) {
             // Convert Bengali voter_area_code to English
@@ -185,11 +196,28 @@ export async function POST(request: NextRequest) {
 
             // Create voter if not exists
             try {
-                const existingVoter = await prisma.voter.findUnique({
-                    where: { voter_id: voterId },
+                // Since voter_id is no longer unique in schema, use findFirst
+                // We check if there's any record with this ID that matches CRITICAL details
+                const existingVoter = await prisma.voter.findFirst({
+                    where: {
+                        voter_id: voterId,
+                    }
                 });
 
-                if (!existingVoter) {
+                let isDuplicate = false;
+                if (existingVoter) {
+                    // Strict check: ID matched. Now check Name and Father Name.
+                    // If everything matches, it's a true duplicate -> SKIP
+                    // If names differ, we ALLOW it (treat as new entry or correction)
+                    const nameMatch = existingVoter.name.trim().toLowerCase() === voter.name.trim().toLowerCase();
+                    const fatherMatch = existingVoter.father.trim().toLowerCase() === (voter.father_name || 'N/A').trim().toLowerCase();
+
+                    if (nameMatch && fatherMatch) {
+                        isDuplicate = true;
+                    }
+                }
+
+                if (!isDuplicate) {
                     await prisma.voter.create({
                         data: {
                             sl_no: serialNo,
@@ -207,9 +235,12 @@ export async function POST(request: NextRequest) {
                     votersCreated++;
                 } else {
                     votersSkipped++;
+                    skippedRecords.push({ ...voter, reason: 'Duplicate Record (ID+Name+Father)' });
                 }
-            } catch (err) {
+            } catch (err: any) {
+                console.error('Record creation error:', err);
                 votersSkipped++;
+                skippedRecords.push({ ...voter, reason: err.message || 'Database error' });
             }
         }
 
@@ -232,6 +263,7 @@ export async function POST(request: NextRequest) {
                 areasCreated,
                 votersCreated,
                 votersSkipped,
+                skippedRecords,
                 totalProcessed: voters.length,
             },
         });

@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Upload, Database, CheckCircle, AlertCircle, Info, FileJson, Play } from 'lucide-react';
+import { Upload, Database, CheckCircle, AlertCircle, Info, FileJson, Play, Download, AlertTriangle } from 'lucide-react';
 
 const CHUNK_SIZE = 50;
 
 export default function ImportDataPage() {
     const [importQueue, setImportQueue] = useState<any[]>([]);
+    const [skippedData, setSkippedData] = useState<any[]>([]);
     const [isImporting, setIsImporting] = useState(false);
     const [progress, setProgress] = useState(0);
     const [stats, setStats] = useState({
@@ -55,6 +56,7 @@ export default function ImportDataPage() {
             }
 
             setImportQueue(dataToImport);
+            setSkippedData([]);
             setStats({
                 processed: 0,
                 total: dataToImport.length,
@@ -111,6 +113,7 @@ export default function ImportDataPage() {
             skipped: 0,
             areasCreated: 0
         };
+        setSkippedData([]);
 
         try {
             for (let i = 0; i < importQueue.length; i += CHUNK_SIZE) {
@@ -130,6 +133,10 @@ export default function ImportDataPage() {
                         currentStats.created += result.data.votersCreated;
                         currentStats.skipped += result.data.votersSkipped;
                         currentStats.areasCreated += result.data.areasCreated;
+
+                        if (result.data.skippedRecords && Array.isArray(result.data.skippedRecords)) {
+                            setSkippedData(prev => [...prev, ...result.data.skippedRecords]);
+                        }
                     } else {
                         console.error('Chunk failed', result);
                         currentStats.processed += chunk.length;
@@ -153,6 +160,20 @@ export default function ImportDataPage() {
         }
     };
 
+    const downloadSkippedData = () => {
+        if (skippedData.length === 0) return;
+
+        const dataStr = JSON.stringify(skippedData, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+
+        const exportFileDefaultName = `skipped_records_${new Date().toISOString().slice(0, 10)}.json`;
+
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+    };
+
     return (
         <div className="p-8">
             <div className="mb-8">
@@ -171,8 +192,8 @@ export default function ImportDataPage() {
                     <div className="mb-6">
                         <label
                             className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer transition-all ${isImporting
-                                    ? 'border-slate-700 bg-slate-800/30 opacity-50 cursor-not-allowed'
-                                    : 'border-slate-600 hover:border-violet-500 hover:bg-slate-700/30'
+                                ? 'border-slate-700 bg-slate-800/30 opacity-50 cursor-not-allowed'
+                                : 'border-slate-600 hover:border-violet-500 hover:bg-slate-700/30'
                                 }`}
                         >
                             <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -286,6 +307,45 @@ export default function ImportDataPage() {
                                         </div>
                                         <p className="text-2xl font-bold text-white">{stats.areasCreated}</p>
                                         <p className="text-xs text-slate-400">Areas Created</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Skipped Data Warning & Download */}
+                            {skippedData.length > 0 && (
+                                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                                    <div className="flex items-start gap-3">
+                                        <AlertTriangle className="text-amber-400 shrink-0 mt-0.5" size={24} />
+                                        <div className="flex-1">
+                                            <h3 className="font-semibold text-amber-400">
+                                                {skippedData.length} Records Skipped
+                                            </h3>
+                                            <p className="text-sm text-amber-300/80 mt-1 mb-3">
+                                                Some records were skipped due to errors or duplication. You can download the details to analyze the issues.
+                                            </p>
+                                            <button
+                                                onClick={downloadSkippedData}
+                                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/20 text-amber-300 text-sm font-medium hover:bg-amber-500/30 transition-colors"
+                                            >
+                                                <Download size={16} />
+                                                Download Skipped Records JSON
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Preview of first 5 skipped items */}
+                                    <div className="mt-4 pt-4 border-t border-amber-500/20">
+                                        <p className="text-xs text-amber-400/70 mb-2 uppercase font-semibold">Preview (First 5)</p>
+                                        <div className="bg-slate-900/50 rounded-lg p-3 text-xs font-mono text-amber-200/80 overflow-x-auto max-h-40 overflow-y-auto">
+                                            {skippedData.slice(0, 5).map((item, idx) => (
+                                                <div key={idx} className="mb-1 pb-1 border-b border-white/5 last:border-0 last:mb-0 last:pb-0">
+                                                    <span className="text-amber-500">[{item.reason}]</span> {item.name} ({item.voter_id || 'ID Missing'})
+                                                </div>
+                                            ))}
+                                            {skippedData.length > 5 && (
+                                                <div className="text-slate-500 italic mt-1">...and {skippedData.length - 5} more</div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             )}

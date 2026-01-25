@@ -23,7 +23,7 @@ model Voter {
   id              String    @id @default(auto()) @map("_id") @db.ObjectId
   sl_no           String
   name            String
-  voter_id        String    @unique
+  voter_id        String
   father          String
   mother          String
   occupation      String    @default("N/A")
